@@ -16,7 +16,7 @@ import time
 # Configuration
 # ------------------------------
 UDP_IP = "127.0.0.1"
-UDP_Port = 20001
+UDP_Port = 9090
 bufferSize = 1024
 
 axis1 = 45.0
@@ -38,7 +38,7 @@ byte2send = axis_pos
 # Address family
 IPv4 = socket.AF_INET
 IPv6 = socket.AF_INET6
-BLUETOOTH = socket.AddressFamily.AF_BLUETOOTH
+# BLUETOOTH = socket.AddressFamily.AF_BLUETOOTH
 
 # Communication protocols
 UDP = socket.SOCK_DGRAM

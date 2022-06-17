@@ -16,7 +16,7 @@ import time
 # Configuration
 # ------------------------------
 UDP_IP = "127.0.0.1"
-UDP_Port = 20001
+UDP_Port = 9090
 bufferSize = 1024
 
 serverMessage = "Hello UPD Client (Matlab)"
@@ -27,7 +27,7 @@ byte2send = str.encode(serverMessage)
 # Address family
 IPv4 = socket.AF_INET
 IPv6 = socket.AF_INET6
-BLUETOOTH = socket.AddressFamily.AF_BLUETOOTH
+# BLUETOOTH = socket.AddressFamily.AF_BLUETOOTH
 
 # Communication protocols
 UDP = socket.SOCK_DGRAM
@@ -55,14 +55,14 @@ while(True):
 
     # Received data
     connectionIP = "Client IP Address: " + format(address)
-    connectionMessage = "Message from Client: " + format(struct.unpack('<fff', data))
+    connectionMessage = "Message from Client: " + format(struct.unpack('!fff', data))
     
     # Print data
     print(connectionIP)
     print(connectionMessage)
 
     # Send data
-    address_matlab = ('127.0.0.1', 20002)
+    address_matlab = ('127.0.0.1', 9091)
     serverSocket.sendto(data, address_matlab)
     print("UPD Server: Message sent to: {}".format(address_matlab))
 
