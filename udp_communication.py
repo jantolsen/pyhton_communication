@@ -9,7 +9,6 @@
 #           [16.06.2022] - Jan T. Olsen
 
 # Import packages
-from pickle import TRUE
 import socket
 import struct
 import time
@@ -115,5 +114,5 @@ class UDPCommunication():
 if __name__ == "__main__":
     udpComm = UDPCommunication()
 
-    while(TRUE):
+    while True:
         udpComm.connect()

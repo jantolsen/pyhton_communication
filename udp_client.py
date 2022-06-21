@@ -9,7 +9,6 @@
 #           [16.06.2022] - Jan T. Olsen
 
 # Import packages
-from pickle import TRUE
 import socket
 import struct
 import time
