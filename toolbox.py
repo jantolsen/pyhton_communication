@@ -26,32 +26,33 @@ class _COMM_CONST:
     """
 
     # Address Family
-    _IPV4   : int = socket.AF_INET
-    _IPV6   : int = socket.AF_INET6
+    IPV4    : int = socket.AF_INET
+    IPV6    : int = socket.AF_INET6
 
     # Communication Protocols
-    _UDP    : int = socket.SOCK_DGRAM
-    _TCP    : int = socket.SOCK_STREAM
+    UDP     : int = socket.SOCK_DGRAM
+    TCP     : int = socket.SOCK_STREAM
 
     # Byte Order
-    _Native         : str = "="  # Native to system OS (sys.byteorder)
-    _LittleEndian   : str = "<"  # Little-Endian
-    _BigEndian      : str = ">"  # Big-Endian
-    _Network        : str = "!"  # Big-Endian
+    Native          : str = "="  # Native to system OS (sys.byteorder)
+    LittleEndian    : str = "<"  # Little-Endian
+    BigEndian       : str = ">"  # Big-Endian
+    Network         : str = "!"  # Big-Endian
 
     # Format Characters
-    _CHAR           : str = "c"  # Character (Byte Size: 1)
-    _SCHAR          : str = "b"  # Signed Character (Byte Size: 1)
-    _UCHAR          : str = "B"  # Unsigned Character (Byte Size: 1)
-    _BOOL           : str = "?"  # Bool (Byte Size: 1)
-    _INT16          : str = "h"  # Short (Integer) (Byte Size: 2)
-    _UINT16         : str = "H"  # Unsigned Short (Integer) (Byte Size: 2)
-    _INT32          : str = "i"  # Integer (Byte Size: 4)
-    _UINT32         : str = "I"  # Unsigned Integer (Byte Size: 4)
-    _LINT           : str = "l"  # Long Integer (Byte Size: 4)
-    _ULINT          : str = "L"  # Unsigned Long Integer (Byte Size: 4)
-    _FLOAT          : str = "f"  # Float (Byte Size: 4)
-    _STR            : str = "s"  # String (char[]) (Byte Size: Char*X)
+    CHAR            : str = "c"  # Character (Byte Size: 1)
+    SCHAR           : str = "b"  # Signed Character (Byte Size: 1)
+    UCHAR           : str = "B"  # Unsigned Character (Byte Size: 1)
+    BOOL            : str = "?"  # Bool (Byte Size: 1)
+    INT16           : str = "h"  # Short (Integer) (Byte Size: 2)
+    UINT16          : str = "H"  # Unsigned Short (Integer) (Byte Size: 2)
+    INT32           : str = "i"  # Integer (Byte Size: 4)
+    UINT32          : str = "I"  # Unsigned Integer (Byte Size: 4)
+    LINT            : str = "l"  # Long Integer (Byte Size: 4)
+    ULINT           : str = "L"  # Unsigned Long Integer (Byte Size: 4)
+    FLOAT           : str = "f"  # Float (Real) (Byte Size: 4)
+    DOUBLE          : str = "d"  # Double (LReal) (Byte Size: 8)
+    STR             : str = "s"  # String (char[]) (Byte Size: Char*X)
 
 # Dataclass - Communication Configuration
 @dataclass
