@@ -156,7 +156,7 @@ def pack2byte_DataClass(dataclass):
 
     # Initialize Function outputs
     conversionCode = '' 
-    packedDataClass = ''
+    dataPacked = ''
     data = 0
 
     # Declare field variables
@@ -192,13 +192,13 @@ def pack2byte_DataClass(dataclass):
         data = field_value
 
         # Pack Dataclass data to byte
-        packedDataClass = struct.pack(_COMM_CONST.Network + conversionCode, *field_value)
+        dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, *field_value)
     else:
         # Report error
         print('ERROR: pack2byte_DataClass: Incomming data is NOT dataclass {%s}' %type(dataclass))
         pass
 
-    return conversionCode, packedDataClass, data
+    return conversionCode, data, dataPacked
 
 # Find Byte Conversion Code of input
 def findConversionCode(data) -> str:
@@ -261,20 +261,23 @@ if __name__ == "__main__":
     jan = testData()
     kai = testData(name='kai',age=88, heigth=1.92)
 
-    cCode1, data_packed, data = pack2byte_DataClass(jan)
+    cCode1, data, data_packed = pack2byte_DataClass(jan)
     print(cCode1)
     print(data)
+    print(data_packed)
     print('\n')
 
 
     code = _COMM_CONST.Network + cCode1 
+    unpacked = struct.unpack(code, data_packed)
+    print(unpacked)
 
-    bytePacked = struct.pack(code, data_packed)
+    bytePacked = struct.pack(code, *data)
     print(data_packed)
 
     print('\n')
 
-    unpacked = struct.unpack(cCode1, bytePacked)
+    unpacked = struct.unpack(code, bytePacked)
     print(unpacked)
 
     name = unpacked[0].decode('UTF-8')
