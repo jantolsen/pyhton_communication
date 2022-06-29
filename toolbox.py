@@ -146,18 +146,22 @@ def findConversionCode(indata) -> str:
     # Bool
     if type(indata) is bool:
         conversioncode = _COMM_CONST.BOOL
+
     # Int
     elif type(indata) is int:
         conversioncode = _COMM_CONST.INT16
+
     # Float
     elif type(indata) is float:
         conversioncode = _COMM_CONST.FLOAT
+
     # String
     elif type(indata) is str:
         # String is handled as an array of chars
-        string_len = len(indata)                      # Find string-length
+        string_len = len(indata)                    # Find string-length
         chars = format(string_len)                  # Format string-length number as string
         conversioncode = chars + _COMM_CONST.STR    # Add string-length number to conversion-code constant
+
     # Unsupported type
     else:
         # Report error
@@ -167,7 +171,7 @@ def findConversionCode(indata) -> str:
     return conversioncode
 
 # Pack Data to Bytes
-def packToBytes(indata) -> tuple[object, bytes, str]:
+def packToBytes(indata) -> tuple[bytes, str]:
     """
     Pack data to byte
     Get data from input data and pack them to bytes 
@@ -185,13 +189,11 @@ def packToBytes(indata) -> tuple[object, bytes, str]:
 
     # Check if in-data is iterable
     if checkIterable(indata):
-
         # Data is redefined as list
         data = []
 
         # Loop through incomming data
         for element in indata:
-            
             # Copy element of indata to local variable
             _data = element
 
@@ -211,11 +213,10 @@ def packToBytes(indata) -> tuple[object, bytes, str]:
     
     # In-data is not iterable
     else:
-         
         # Get and Update Conversion Code
         conversionCode += findConversionCode(indata)
 
-        # String: Special case
+        # Special case: String
         if type(indata) is str:
             # String needs to be encoded to byte-value
             data = indata.encode('UTF-8')
@@ -229,10 +230,10 @@ def packToBytes(indata) -> tuple[object, bytes, str]:
         dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, data)
 
     # Function return 
-    return data, dataPacked, conversionCode
+    return dataPacked, conversionCode
 
 # Pack Dataclass to byte
-def packToBytes_DataClass(dataclass) -> tuple[list, bytes, str]:
+def packToBytes_DataClass(dataclass) -> tuple[ bytes, str, list]:
     """
     Pack DataClass to byte
     Get data entries from dataclass and pack them to bytes 
@@ -247,7 +248,7 @@ def packToBytes_DataClass(dataclass) -> tuple[list, bytes, str]:
     # Initialize Function outputs
     conversionCode = '' 
     dataPacked = b''
-    data = 0
+    indata = 0
 
     # Declare field variables
     field_name = []
@@ -256,10 +257,8 @@ def packToBytes_DataClass(dataclass) -> tuple[list, bytes, str]:
 
     # Ensure that incomming data is a dataclass
     if is_dataclass(dataclass):
-
         # Loop through the fields of the dataclass
         for field in fields(dataclass):
-            
             # Get information for current field of data
             _name = field.name
             _value = dataclass.__getattribute__(_name)
@@ -267,7 +266,7 @@ def packToBytes_DataClass(dataclass) -> tuple[list, bytes, str]:
             # Get and Update Conversion Code
             conversionCode += findConversionCode(_value)
 
-            # String: Special case
+            # Special case: String
             if type(_value) is str:
                 # String needs to be encoded to byte-value
                 _value = _value.encode('UTF-8')
@@ -277,10 +276,10 @@ def packToBytes_DataClass(dataclass) -> tuple[list, bytes, str]:
             field_value.append(_value)
 
         # Dataclass Data
-        data = field_value
+        indata = field_value
 
         # Pack Dataclass data to byte
-        dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, *data)
+        dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, *indata)
     
     # Incomming data is NOT dataclass
     else:
@@ -288,7 +287,93 @@ def packToBytes_DataClass(dataclass) -> tuple[list, bytes, str]:
         raise TypeError('ERROR: pack2byte_DataClass: Incomming data is NOT dataclass {%s}' %type(dataclass))
 
     # Function return 
-    return data, dataPacked, conversionCode
+    return dataPacked, conversionCode, indata
+
+# Unpack Data from Bytes
+def unpackFromBytes(conversionCode : str, packedData : bytes):
+    """
+    Unpack data from bytes
+    The packed data is converted back to its original type(s)
+    using the given conversion-code
+    Unpacked-data can be used for data-received over TCP/UDP
+    :param dataPacked: Packed data (bytes)
+    :param conversionCode: Conversion-Code of packed data (str)
+    :return data: Unpacked Data
+    """
+    # Define local variables
+    _unpackedData = b''
+    _value = ''
+    _index = 0
+
+    # Unpack data from bytes to a local variable
+    _unpackedData = struct.unpack(_COMM_CONST.Network + conversionCode, packedData)
+
+    # Determine if Packed-Data contains more than one-variable
+    if len(conversionCode) > 1:
+
+        # Define Unpacked-Data as list
+        unpackedDataList = []
+        
+        # Iterate through Conversion-Code
+        for code in conversionCode:
+            
+            # Special case: Digit
+            if code.isdigit():
+                # If a digit is present in the Conversion-Code
+                # its related to the length of a future string
+                # and has no related value in the Packed-Data
+
+                # Skip this iteration
+                continue
+
+            # Special case: String
+            elif code == _COMM_CONST.STR:
+                # String needs to be decoded from byte-value
+                _value = _unpackedData[_index].decode('UTF-8')
+
+            # Assign the local value-variable equal to the indexed element of unpackedData
+            else:
+                _value = _unpackedData[_index]
+
+            # Update the index number
+            _index += 1
+
+            # Append index value to Unpacked-Data list
+            unpackedDataList.append(_value)
+
+        # Check length of list
+        if len(unpackedDataList) > 1:
+
+            # Unpacked-Data-List contains more than one entry
+            # Convert Unpacked-Data-List to a tuple
+            unpackedData = tuple(unpackedDataList)
+
+        # List length is only one entry
+        else:
+            # Assign the Unpacked-Data equals to the only entry of the list
+            unpackedData = unpackedDataList[-1]
+
+    # Only one variable to unpack
+    else:
+        # Assign the Unpacked-data equals to the previously found local variable
+        unpackedData = _unpackedData
+
+    # Function return
+    return unpackedData
+
+# Unpack Data from Bytes
+def unpackFromBytes_DataClass(conversionCode : str, packedData : bytes) -> tuple:
+    """
+    Unpack Data-class from bytes 
+    The packed data is converted back to its original dataclass type(s)
+    using the given conversion-code
+    Unpacked-data can be used for data-received over TCP/UDP
+    :param dataPacked: Packed data (bytes)
+    :param conversionCode: Conversion-Code of packed data (str)
+    :return data: Unpacked Data (tuple)
+    """
+    raise NotImplementedError()
+
 
 @dataclass
 class testData():
@@ -309,68 +394,73 @@ class testData():
     #         print(_value)
     #         print(_type)
     #         # _typeConversion
+    def update(self, name : str, age : int, height : float):
+        self.name = name
+        self.age = age
+        self.heigth = height
 
-
+    def updateWithTuple(self, data : tuple):
+        
+        self.update(data[0], data[1], data[2])
 
 # Main Function
 # ------------------------------
 if __name__ == "__main__":
     communicationConstants = _COMM_CONST()
 
-    # data_test = b''
+    # TEST & DEBUG
+    # ------------------------------
+
+
+    # data_test = ('hei jan', 'hei birger', 88.99, True)
     # print(data_test)
-    # print(type(data_test))
     # print('\n')
-
-    # data_test = {'hei jans', 123}
-
-    data_test = 'jan thomas', 29, 1.85, True
+    
+    data_test = testData()
     print(data_test)
-    print(type(data_test))
 
-    print(checkIterable(data_test))
+
+    # packedData, convCode = packToBytes(data_test)
+    packedData, convCode, datain = packToBytes_DataClass(data_test)
+    print(packedData)
+    print(convCode)
     print('\n')
 
-    data, data_packed, conv_code = packToBytes(data_test)
-    print(conv_code)
-    print(data)
-    print(data_packed)
+    unpackedData = unpackFromBytes(convCode, packedData)
+    print(unpackedData)
     print('\n')
 
-    unpacked = struct.unpack(_COMM_CONST.Network + conv_code, data_packed)
-    print(unpacked)
-    print(type(unpacked))
-    print(unpacked[1])
-    print('\n')
+    data_test.updateWithTuple(unpackedData)
+    print(data_test)
 
 
-    # jan = testData()
-    # kai = testData(name='kai',age=88, heigth=1.92)
+    # # kai = testData(name='kai',age=88, heigth=1.92)
+    # # jan = testData()
+    # # print(jan)
+    # # print('\n')
 
-    # data, data_packed, conv_code = packToBytes_DataClass(jan)
-    # print(conv_code)
-    # print(data)
-    # print(data_packed)
-    # print('\n')
+    # # data_test = 'Geir', 52, 1.71
+    # # print(data_test)
+    # # print(type(data_test))
 
+    # # print(checkIterable(data_test))
+    # # print('\n')
+    
 
-    # code = _COMM_CONST.Network + conv_code 
-    # unpacked = struct.unpack(code, data_packed)
-    # print(unpacked)
+    # # data, data_packed, conv_code = packToBytes(data_test)
+    # # print(conv_code)
+    # # print(data)
+    # # print(data_packed)
+    # # print('\n')
 
-    # bytePacked = struct.pack(code, *data)
-    # print(data_packed)
+    # # unpacked = struct.unpack(_COMM_CONST.Network + conv_code, data_packed)
+    # # print(unpacked)
+    # # print(type(unpacked))
+    # # print(unpacked[1])
+    # # print('\n')
 
-    # print('\n')
-
-    # unpacked = struct.unpack(code, bytePacked)
-    # print(unpacked)
-
-    # name = unpacked[0].decode('UTF-8')
-    # age = unpacked[1]
-    # height = unpacked[2]
-    # print(name)
-    # print(age)
-    # print(height)
+    # # # jan.update(unpacked[0].decode('UTF-8'), unpacked[1], unpacked[2])
+    # # jan.updateWithTuple(unpacked)
+    # # print(jan)
 
     
