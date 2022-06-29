@@ -15,7 +15,7 @@ import socket
 import struct
 
 # Dataclass - Communication Constants
-@dataclass
+@dataclass(slots=False)
 class _COMM_CONST:
     """
     Communication Constants
@@ -53,7 +53,7 @@ class _COMM_CONST:
     STR             : str = "s"  # String (char[]) (Byte Size: Char*X)
 
 # Dataclass - Communication Configuration
-@dataclass
+@dataclass(slots=False)
 class _CommConfig:
     """
     Communication Configuration
@@ -71,7 +71,7 @@ class _CommConfig:
 
 
 # Dataclass - Communication Configuration
-@dataclass
+@dataclass(slots=False)
 class LocalConfig(_CommConfig):
     """
     Communication Configuration Local
@@ -90,7 +90,7 @@ class LocalConfig(_CommConfig):
 
 
 # Dataclass - Communication Configuration
-@dataclass
+@dataclass(slots=False)
 class RemoteConfig(_CommConfig):
     """
     Communication Configuration Remote
@@ -107,56 +107,146 @@ class RemoteConfig(_CommConfig):
     def __post_init__(self) -> None:
         self.Config = (self.IP, self.Port)
 
-# Pack to Bytes
-def packDataToBytes(*data_in):
+# Check if object is iterable
+def checkIterable(object) -> bool:
+    """
+    Check if input-object is iterable
+    (note String is not considered as iterable type)
+    :param object: Incomming object
+    :return bool: Returns true or false depending on iterable object or not
+    """
+    # Try to get an iterator from the object
+    try:
+        it = iter(object)
 
-    
-    # Loop through incomming data
-    for data in data_in:
-        
-        # Initialize Conversion-Code
-        conversionCode = _COMM_CONST.Network
+        # Check if object is String
+        if type(object) is str:
+            return False
+        # Object is iterable
+        else:
+            return True
+    # Failed to get an iterator from object
+    except TypeError: 
+        # Return non-iterable status
+        return False
 
-        # Check if data element is a dataclass
-        if is_dataclass(data):
-            
+# Find Byte Conversion Code of input
+def findConversionCode(indata) -> str:
+    """
+    Find the correct Conversion-Code of input-data
+    Using the _COMM_CONT dataclass
+    :param indata: Incomming Data 
+    :return conversionCode: Conversion-Code of data
+    """
+    # Define Conversion-Code variable
+    conversioncode = ''
 
-            # Declare field variables
-            field_name = []
-            field_type = []
-            field_value = []    
+    # Based on data-type assign correct Byte Conversion Code
+    # ------------------------------
+    # Bool
+    if type(indata) is bool:
+        conversioncode = _COMM_CONST.BOOL
+    # Int
+    elif type(indata) is int:
+        conversioncode = _COMM_CONST.INT16
+    # Float
+    elif type(indata) is float:
+        conversioncode = _COMM_CONST.FLOAT
+    # String
+    elif type(indata) is str:
+        # String is handled as an array of chars
+        string_len = len(indata)                      # Find string-length
+        chars = format(string_len)                  # Format string-length number as string
+        conversioncode = chars + _COMM_CONST.STR    # Add string-length number to conversion-code constant
+    # Unsupported type
+    else:
+        # Report error
+        raise TypeError('ERROR: findConversionCode: Unsupported type {%s}' %type(indata))
 
-            # Loop through the fields of the dataclass
-            for field in fields(data):
-                
-                # Get information for current field of data
-                _name = field.name
-                _value = data.__getattribute__(_name)
-                _type = type(_value)
+    # Return Conversion-Code
+    return conversioncode
 
-                # Append acquired information to arrays
-                field_name.append(_name)
-                field_value.append(_value)
-                field_type.append(_type)
-
-                conversionCode += findConversionCode(_type)
-
-            # Pack dataclass-data to byte
-            # byte
-
-
-            print(field_name)
-            print(field_type)
-            print(field_value)
-
-        print(conversionCode)
-
-# Pack data-class to byte
-def pack2byte_DataClass(dataclass):
+# Pack Data to Bytes
+def packToBytes(indata) -> tuple[object, bytes, str]:
+    """
+    Pack data to byte
+    Get data from input data and pack them to bytes 
+    with correct conversion-code for the related data-types
+    Packed-data can be used for data-transfer over TCP/UDP
+    :param indata: Data to be packed to bytes
+    :return dataPacked: Packed data (bytes)
+    :return conversionCode: Conversion-Code of packed data (str)
+    """
 
     # Initialize Function outputs
     conversionCode = '' 
-    dataPacked = ''
+    dataPacked = b''
+    data = 0
+
+    # Check if in-data is iterable
+    if checkIterable(indata):
+
+        # Data is redefined as list
+        data = []
+
+        # Loop through incomming data
+        for element in indata:
+            
+            # Copy element of indata to local variable
+            _data = element
+
+            # Get and Update Conversion Code
+            conversionCode += findConversionCode(_data)
+
+            # String: Special case
+            if type(_data) is str:
+                # String needs to be encoded to byte-value
+                _data = _data.encode('UTF-8')
+
+            # Append acquired information to data-array
+            data.append(_data)
+        
+        # Pack data to bytes
+        dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, *data)
+    
+    # In-data is not iterable
+    else:
+         
+        # Get and Update Conversion Code
+        conversionCode += findConversionCode(indata)
+
+        # String: Special case
+        if type(indata) is str:
+            # String needs to be encoded to byte-value
+            data = indata.encode('UTF-8')
+
+        # In-data is not string
+        else:
+            # Assign data equal to indata
+            data = indata
+
+        # Pack data to bytes
+        dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, data)
+
+    # Function return 
+    return data, dataPacked, conversionCode
+
+# Pack Dataclass to byte
+def packToBytes_DataClass(dataclass) -> tuple[list, bytes, str]:
+    """
+    Pack DataClass to byte
+    Get data entries from dataclass and pack them to bytes 
+    with correct conversion-code for the related data-types
+    Packed-data can be used for data-transfer over TCP/UDP
+    :param dataclass: Dataclass to be packed to bytes
+    :return data: Dataclass data (list)
+    :return dataPacked: Packed Dataclass data (bytes)
+    :return conversionCode: Conversion-Code of packed data (str)
+    """
+
+    # Initialize Function outputs
+    conversionCode = '' 
+    dataPacked = b''
     data = 0
 
     # Declare field variables
@@ -173,64 +263,32 @@ def pack2byte_DataClass(dataclass):
             # Get information for current field of data
             _name = field.name
             _value = dataclass.__getattribute__(_name)
-            _type = type(_value)
 
-            # Update Conversion Code
+            # Get and Update Conversion Code
             conversionCode += findConversionCode(_value)
 
-            # Special case:
-            if _type is str:
+            # String: Special case
+            if type(_value) is str:
                 # String needs to be encoded to byte-value
                 _value = _value.encode('UTF-8')
 
             # Append acquired information to arrays
             field_name.append(_name)
             field_value.append(_value)
-            field_type.append(_type)
 
         # Dataclass Data
         data = field_value
 
         # Pack Dataclass data to byte
-        dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, *field_value)
+        dataPacked = struct.pack(_COMM_CONST.Network + conversionCode, *data)
+    
+    # Incomming data is NOT dataclass
     else:
         # Report error
-        print('ERROR: pack2byte_DataClass: Incomming data is NOT dataclass {%s}' %type(dataclass))
-        pass
+        raise TypeError('ERROR: pack2byte_DataClass: Incomming data is NOT dataclass {%s}' %type(dataclass))
 
-    return conversionCode, data, dataPacked
-
-# Find Byte Conversion Code of input
-def findConversionCode(data) -> str:
-
-    # Define Conversion-Code variable
-    conversioncode = ''
-
-    # Based on data-type assign correct Byte Conversion Code
-    # ------------------------------
-    # Bool
-    if type(data) is bool:
-        conversioncode = _COMM_CONST.BOOL
-    # Int
-    elif type(data) is int:
-        conversioncode = _COMM_CONST.INT16
-    # Float
-    elif type(data) is float:
-        conversioncode = _COMM_CONST.FLOAT
-    # String
-    elif type(data) is str:
-        # String is handled as an array of chars
-        string_len = len(data)                      # Find string-length
-        chars = format(string_len)                  # Format string-length number as string
-        conversioncode = chars + _COMM_CONST.STR    # Add string-length number to conversion-code constant
-    # Unsupported type
-    else:
-        # Report error
-        print('ERROR: findConversionCode: Unsupported type {%s}' %type(data))
-        pass
-
-    # Return Conversion-Code
-    return conversioncode
+    # Function return 
+    return data, dataPacked, conversionCode
 
 @dataclass
 class testData():
@@ -252,39 +310,67 @@ class testData():
     #         print(_type)
     #         # _typeConversion
 
+
+
 # Main Function
 # ------------------------------
 if __name__ == "__main__":
     communicationConstants = _COMM_CONST()
 
+    # data_test = b''
+    # print(data_test)
+    # print(type(data_test))
+    # print('\n')
 
-    jan = testData()
-    kai = testData(name='kai',age=88, heigth=1.92)
+    # data_test = {'hei jans', 123}
 
-    cCode1, data, data_packed = pack2byte_DataClass(jan)
-    print(cCode1)
+    data_test = 'jan thomas', 29, 1.85, True
+    print(data_test)
+    print(type(data_test))
+
+    print(checkIterable(data_test))
+    print('\n')
+
+    data, data_packed, conv_code = packToBytes(data_test)
+    print(conv_code)
     print(data)
     print(data_packed)
     print('\n')
 
-
-    code = _COMM_CONST.Network + cCode1 
-    unpacked = struct.unpack(code, data_packed)
+    unpacked = struct.unpack(_COMM_CONST.Network + conv_code, data_packed)
     print(unpacked)
-
-    bytePacked = struct.pack(code, *data)
-    print(data_packed)
-
+    print(type(unpacked))
+    print(unpacked[1])
     print('\n')
 
-    unpacked = struct.unpack(code, bytePacked)
-    print(unpacked)
 
-    name = unpacked[0].decode('UTF-8')
-    age = unpacked[1]
-    height = unpacked[2]
-    print(name)
-    print(age)
-    print(height)
+    # jan = testData()
+    # kai = testData(name='kai',age=88, heigth=1.92)
+
+    # data, data_packed, conv_code = packToBytes_DataClass(jan)
+    # print(conv_code)
+    # print(data)
+    # print(data_packed)
+    # print('\n')
+
+
+    # code = _COMM_CONST.Network + conv_code 
+    # unpacked = struct.unpack(code, data_packed)
+    # print(unpacked)
+
+    # bytePacked = struct.pack(code, *data)
+    # print(data_packed)
+
+    # print('\n')
+
+    # unpacked = struct.unpack(code, bytePacked)
+    # print(unpacked)
+
+    # name = unpacked[0].decode('UTF-8')
+    # age = unpacked[1]
+    # height = unpacked[2]
+    # print(name)
+    # print(age)
+    # print(height)
 
     
