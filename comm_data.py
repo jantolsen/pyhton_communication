@@ -415,8 +415,8 @@ def test_debug():
 # ------------------------------
 if __name__ == "__main__":
 
-    # main()
+    main()
 
-    test_debug()
+    # test_debug()
 
 

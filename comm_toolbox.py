@@ -134,7 +134,8 @@ def _iterable(object) -> bool:
 def find_conversioncode(data) -> str:
     """
     Find the corresponding Conversion-Code of input data
-    Using the _COMM_CONT dataclass. Note: input data needs to be a pure data-type
+    Using the _COMM_CONT dataclass. 
+    Note: input data needs to be a pure data-type
     :param datatype: Incomming Datatype (bool, int, float, str) 
     :return conversionCode: Conversion-Code of datatype (str)
     """
