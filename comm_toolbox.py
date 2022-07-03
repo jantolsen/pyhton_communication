@@ -287,7 +287,7 @@ def pack_to_bytes(indata) -> tuple[bytes, str]:
         packed_data = struct.pack(_COMM_CONST.Network + conversioncode, data)
 
     # Function return 
-    return packed_data, conversioncode
+    return packed_data, conversioncode, data
 
 # Unpack Data from Bytes
 def unpack_from_bytes(packed_data : bytes, conversioncode : str):

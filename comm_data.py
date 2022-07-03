@@ -89,7 +89,7 @@ class _CommDataclass():
             
             # Pack Data to Bytes
             # (Call "CommToolbox.pack_to_bytes()")
-            _packed_data, _conversioncode = CommToolbox.pack_to_bytes(_value)
+            _packed_data, _conversioncode, _data = CommToolbox.pack_to_bytes(_value)
 
             # Update Packed Dataclass and ConversionCode with data from current field 
             packed_dataclass += _packed_data
