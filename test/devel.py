@@ -190,22 +190,35 @@ class TestClass3():
     B : TestClass2
 
 @dataclass()
-class TypeMap():
-    data    : object
-    type    : type
-    items   : list
-
-@dataclass()
 class StructureMap():
     type : type
     length : int
     items : list
 
+@dataclass()
+class TypeMap():
+    """
+    Type-Map Dataclass
+    Class used for generation of Type-Structure map
+    of a specified data-type (tuple, list, dataclass, etc.)
+    This includes the: object, type and item-list
+    Used with creating type-map and remapping datatype from type-map
+    """
+    data    : object
+    type    : type
+    items   : list
+
 # Create Type-Map of Dataclass
 def create_typemap_class(indata) -> TypeMap:
     """
+    Create Type-Map of Dataclass
+    Generates a TypeMap-dataclass containg the Type-Map structure
+    of the incomming input-dataclass.
+    Typically used for creating a type-map before packing dataclass 
+    Note: the input-data needs to be a defined dataclass
+    :param indata : Input Dataclass
+    :return type_map : TypeMap-class of input-data type-structure
     """
-
     # Check if in-data is a dataclass
     if not is_dataclass(indata):
         # Raise error
@@ -258,7 +271,9 @@ def create_typemap_class(indata) -> TypeMap:
                         _elem_tuple = (_elem_name, _elem_type)
 
                         # Append data-tuple of current field to item-list
-                        _field_items.append(_elem_tuple)
+                        # _field_items.append(_elem_tuple)
+                        _field_items.append(_elem_type)
+
                     # ------------------------------
                     # End - Layer No. 3 - Data
                 # ------------------------------
@@ -276,7 +291,9 @@ def create_typemap_class(indata) -> TypeMap:
                 _item_tuple = (_field_name, _field_type)
 
                 # Append data-tuple of current field to item-list
-                _items.append(_item_tuple)
+                # _items.append(_item_tuple)
+                _items.append(_field_type)
+                
             # ------------------------------
             # End - Layer No. 2 - Data
         # ------------------------------
@@ -291,12 +308,18 @@ def create_typemap_class(indata) -> TypeMap:
 # Create Type-Map of Iterable
 def create_typemap_iter(indata) -> TypeMap:
     """
+    Create Type-Map of Iterable-Type (list, tuple, etc.)
+    Generates a TypeMap-class containing the Type-Map structure
+    of the incomming input.
+    Typically used for creating a type-map before packing data 
+    Note: the input-data needs to be a iterable data-structured-type
+    :param indata : Input data
+    :return type_map : TypeMap-class of input-data type-structure
     """
-
     # Check if in-data is iterable
     if not is_iterable(indata):
         # Raise error
-        raise TypeError('create_typemap_iter: ERROR - In-Data is iterable, cannot create a type-map')
+        raise TypeError('create_typemap_iter: ERROR - In-Data is NOT iterable, cannot create a type-map')
 
     # Continue creating a Type-Map of input iterable
     else:
@@ -358,7 +381,8 @@ def create_typemap_iter(indata) -> TypeMap:
                                 _comp_tuple = (_comp_data, _comp_type)
 
                                 # Append data-tuple of current field to item-list
-                                _elem_items.append(_comp_tuple)
+                                # _elem_items.append(_comp_tuple)
+                                _elem_items.append(_comp_type)
                             # ------------------------------
                             # End - Layer No. 4 - Data
                         # ------------------------------
@@ -376,7 +400,8 @@ def create_typemap_iter(indata) -> TypeMap:
                         _elem_tuple = (_elem_data, _elem_type)
 
                         # Append data-tuple of current field to item-list
-                        _field_items.append(_elem_tuple)
+                        # _field_items.append(_elem_tuple)
+                        _field_items.append(_elem_type)
                     # ------------------------------
                     # End - Layer No. 3 - Data
                 # ------------------------------
@@ -394,7 +419,8 @@ def create_typemap_iter(indata) -> TypeMap:
                 _item_tuple = (_field_data, _field_type)
 
                 # Append data-tuple of current field to item-list
-                _items.append(_item_tuple)
+                # _items.append(_item_tuple)
+                _items.append(_field_type)
             # ------------------------------
             # End - Layer No. 2 - Data
         # ------------------------------
@@ -409,8 +435,14 @@ def create_typemap_iter(indata) -> TypeMap:
 # Get Type-Map Data
 def get_typemap(indata) -> TypeMap:
     """
+    Get Type-Map of input-data
+    Uses either "create_typemap_class"- or "create_typemap_iter"-function 
+    to generate a TypeMap-class for the input-data
+    Note: input-data needs to be a dataclass or a iterable structured type
+    Typically used for creating a type-map before packing dataclass 
+    :param indata : Input data 
+    :return type_map : Type-Map structure of input-data
     """
-
     # Check if in-data is a structured-type
     if not is_struct_type(indata):
         # Raise error
@@ -439,180 +471,6 @@ def get_typemap(indata) -> TypeMap:
 
     # Function return
     return type_map
-
-# Get Structure-Data
-def get_structure(indata):
-    """
-    Get Struture-Data of input-data
-    This includes the data-type-name and data-length
-    Note: input-data needs to be a data-structure-type
-    If input-data is of dataclass-type, the data is converted to tuple-type
-    :param indata: Input Data 
-    :return data: Replica of input-data (dataclass is onverted to tuple-type)
-    :return data-type: Data-type-name
-    :return data-length: Length of Data
-    """
-    # Check if in-data is a structured-type
-    if not is_struct_type(indata):
-        # Raise error
-        raise TypeError('get_structure_data: ERROR - In-Data is NOT a Structured-Type')
-
-    # Continue
-    else:
-        # Special case: In-data is a dataclass
-        if is_dataclass(indata):
-            # Convert dataclass as a tuple 
-            data = dataclasses.astuple(indata)
-            data_type = type(indata).__name__
-            data_length = len(data)
-        # In-data is a normal structure-type
-        else:
-            data = indata              
-            data_type = type(indata).__name__
-            data_length = len(indata)
-
-    # Return with data, data-type-name and data-length
-    return (data, data_type, data_length)
-
-# Get Structure-Map
-def get_structure_map_DC(indata):
-    
-    # Check if in-data is a structured-type
-    if is_struct_type(indata):
-        
-        _data_list = []
-        _data = indata
-        _data_type = type(indata)
-        _data_length = 0 #len(indata)
-
-        # Iterate through the data
-        for item in _data:
-            if is_struct_type(item):
-
-                _item_list = []
-                _item = item
-                _item_type = type(item)
-                _item_length = 0 #len(item)
-                
-                for elem in item:
-                    if is_struct_type(elem):
-                        _elem_list = []
-                        _elem = elem
-                        _elem_type = type(elem)
-                        _elem_length = 0 #len(elem)
-
-                        for comp in elem:
-                            if is_struct_type(comp):
-                                # Raise error
-                                raise TypeError('get_structure_map: ERROR - Maximum nested layers exceeded')
-                            else:
-                                _elem_list.append(type(comp))
-
-                        _elem = StructureMap(_elem_type, _elem_length, _elem_list)
-                        _item_list.append(_elem)
-                    else:
-                        _item_list.append(type(elem))
-                _item = StructureMap(_item_type, _item_length, _item_list)
-                _data_list.append(_item)
-
-            else:
-                _data_list.append(type(item))
-
-        data_map = StructureMap(_data_type, _data_length, _data_list)
-
-    # In-data is NOT a structured-type
-    else:
-        # Raise error
-        raise TypeError('get_structure_map: ERROR - In-Data is NOT a Structured-Type')
-
-    return data_map
-
-# Get Structure-Map
-def get_structure_map(indata):
-    
-    # Check if in-data is a structured-type
-    if not is_struct_type(indata):
-        # Raise error
-        raise TypeError('get_structure_map: ERROR - In-Data is NOT a Structured-Type')
-
-    # Continue
-    else:
-        # Define list of possible items in data
-        items = []
-        
-        # Get Structure-data of in-data
-        _data, _data_type, _data_length = get_structure(indata)
-
-        # Iterate through the data
-        for item in _data:
-
-            # Items - First layer of nested data in structure
-            # ------------------------------
-            # Check if item is a structured-type
-            if is_struct_type(item):
-                # Define list of possible elements in item
-                elems = []
-
-                # Get Structure-data of item
-                _item, _item_type, _item_length = get_structure(item)
-
-                # Iterate trough item
-                for elem in _item:
-                    
-                    # Elements - Second layer of nested data in structure
-                    # ------------------------------
-                    # Check if element is a structured-type
-                    if is_struct_type(elem):
-
-                        # Define list of possible components in element
-                        comps = []
-
-                        # Get Structure-data of item
-                        _elem, _elem_type, _elem_length = get_structure(elem)
-
-                        # Iterate trough element
-                        for comp in _elem:
-
-                            # Component - Third layer of nested data in structure
-                            # ------------------------------
-                            # Check if component is a structured-type
-                            if is_struct_type(comp):
-                                # Raise error
-                                raise TypeError('get_structure_map: ERROR - Maximum nested layers exceeded')
-                                
-                            # Component of item is NOT a structured-type nor iterable
-                            else:
-                                # Append type-name of item
-                                comps.append(type(comp).__name__)
-
-                        # Define and assign Item-Structue-Map   
-                        _elem_map = (_elem_type, _elem_length, comps)
-
-                        # Append Item structure
-                        elems.append(_elem_map)
-
-                    # Element of item is NOT a structured-type nor iterable
-                    else:
-                        # Append type-name of item
-                        elems.append(type(elem).__name__)
-
-                # Define and assign Item-Structue-Map   
-                _item_map = (_item_type, _item_length, elems)
-
-                # Append Item structure
-                items.append(_item_map)
-
-            # Item of data is NOT a structured-type nor iterable
-            else:
-                # Append type-name of item
-                items.append(type(item).__name__)
-
-        # Assign Data-Structure-Map values
-        data_structure_map = (_data_type, _data_length, items)
-        print(data_structure_map)
-
-        # Function return
-        return (_data_type, _data_length, items)
         
 def restructure(map : StructureMap, indata):
 
@@ -698,6 +556,208 @@ def restructure(map : StructureMap, indata):
 
     return data
 
+# Create a Re-Mapped Dataclass
+def remap_from_typemap_class(indata, map : TypeMap):
+    """
+    """
+
+# Create a Re-Mapped Iterable
+def remap_from_typemap_iter(indata, map : TypeMap):
+    """
+    """
+
+    # Check if in-data is iterable
+    if not is_iterable(indata):
+        # Raise error
+        raise TypeError('remap_from_typemap_iter: ERROR - In-Data is NOT iterable, cannot peform re-mapping')
+
+    # Continue Re-Mapping using input-iterable and Type-Map
+    else:
+        # Assign values to local variables based on in-data
+        _data_list = []
+        _type = map.type
+        _index = 0  # Loop-index
+
+        # Layer No. 1 - Iteration 
+        # ------------------------------
+        # Iterate through map-items
+        for item in map.items:
+            
+            print('Layer - 1 - Loop {%s}' %(_index))
+            print('---------------------')
+            print(item)
+            print('\n')
+
+            # Layer No. 2 - Data
+            # ------------------------------
+            # Check if Item is a Type-Map
+            if type(item) is TypeMap:
+                print(' Item is TypeMap')
+                print('\n')
+                print('---------------------')
+
+                _item_map = item
+                _item_type = item.type
+                _item_list = []
+                
+                # Layer No. 2 - Iteration
+                # ------------------------------
+                # Iterate through the elements of the item-map
+                for elem in _item_map.items:
+                    
+                    print('Layer - 2 - Loop {%s}' %(_index))
+                    print('---------------------')
+                    print(elem)
+                    print('\n')
+
+                    # Layer No. 3 - Data
+                    # ------------------------------
+                    # Check if Element is a Type-Map
+                    if type(elem) is TypeMap:
+                        print(' Element is TypeMap')
+                        print('\n')
+                        print('---------------------')
+
+                        _elem_map = elem
+                        _elem_type = elem.type
+                        _elem_list = []
+
+                        # Layer No. 3 - Iteration
+                        # ------------------------------
+                        # Iterate through the components of the element-map
+                        for comp in _elem_map.items:
+                            
+                            print('Layer - 3 - Loop {%s}' %(_index))
+                            print('---------------------')
+                            print(elem)
+                            print('\n')
+
+                            # Layer No. 4 - Data
+                            # ------------------------------
+                            # Check if component is a Type-Map
+                            if type(comp) is TypeMap:
+                                print(' Component is TypeMap')
+                                print('\n')
+                                print('---------------------')
+
+                                _comp_map = comp
+                                _comp_type = comp.type
+                                _comp_list = []
+                                
+                                # Raise error
+                                raise StopIteration('remap_from_typemap_iter: ERROR - Maximum nested layers exceeded')
+
+                            # Component equals an Iterable-type
+                            # Check if equal type is found in in-data at index 
+                            elif (comp is type(indata[_index])):
+                                print(' Component is Iterable-type')
+                                print('\n')
+                                print('---------------------')
+
+                                # Update local data
+                                _indata = indata[_index]    # Get in-data at index
+                                _elem_list.append(_indata)  # Append in-data at index to element-list
+                                _index += 1                 # Increment Loop-Index
+
+                            # Error Handling
+                            else:
+                                raise TypeError(""" remap_from_typemap_iter: ERROR - Something went wrong. 
+                                                    Iteration member {%s} does not equal TypeMap-dataclass 
+                                                    nor equal the type of in-data at index #{%s} """%(comp, _index))
+                        # ------------------------------
+                        # End - Layer No. 3 Iteration
+
+                        # Update Data
+                        # ------------------------------
+                        # Create Element-Data based on Type-Map entries and datatype
+                        _elem_data = create_iter_type(_elem_list, _elem_type)
+                        # Append Element-data to general Item-list   
+                        _item_list.append(_elem_data)     
+
+                    # Element equals an Iterable-type
+                    # Check if equal type is found in in-data at index 
+                    elif (elem is type(indata[_index])):
+                        print(' Element is Iterable-type')
+                        print('\n')
+                        print('---------------------')
+
+                        # Update local data
+                        _indata = indata[_index]    # Get in-data at index
+                        _item_list.append(_indata)  # Append in-data at index to item-list
+                        _index += 1                 # Increment Loop-Index
+
+                    # Error Handling
+                    else:
+                        raise TypeError(""" remap_from_typemap_iter: ERROR - Something went wrong. 
+                                            Iteration member {%s} does not equal TypeMap-dataclass 
+                                            nor equal the type of in-data at index #{%s} """%(elem, _index))
+                # ------------------------------
+                # End - Layer No. 2 Iteration
+                
+                # Update Data
+                # ------------------------------
+                # Create Item-Data based on Type-Map entries and datatype
+                _item_data = create_iter_type(_item_list, _item_type)
+                # Append Item-data to general data-list   
+                _data_list.append(_item_data)                           
+
+            # Item equals an Iterable-type
+            # Check if equal type is found in in-data at index 
+            elif (item is type(indata[_index])):
+                print(' Item is Iterable-type')
+                print('\n')
+                print('---------------------')
+
+                # Update local data
+                _indata = indata[_index]    # Get in-data at index
+                _data_list.append(_indata)  # Append in-data at index to data-list
+                _index += 1                 # Increment Loop-Index
+
+            # Error Handling
+            else:
+                raise TypeError(""" remap_from_typemap_iter: ERROR - Something went wrong. 
+                                    Iteration member {%s} does not equal TypeMap-dataclass 
+                                    nor equal the type of in-data at index #{%s} """%(item, _index))
+            # ------------------------------
+            # End - Layer No. 2 Data
+        # ------------------------------
+        # End - Layer No. 1 Iteration
+
+        # Update Data
+        # ------------------------------
+        # Create data based on Type-Map entries and datatype
+        data = create_iter_type(_data_list, _type)
+
+        print('---------------------')
+        print(' End of Remapping ')
+        print('\n')
+        print('---------------------')
+    # Function return
+    return data
+
+# Create Iterable Type 
+def create_iter_type(indata : list, iter_type : type):
+    """
+    Create Iterable Type based on input-data and input-type
+    Used in conjunction with re-mapping from type-map
+    Input-data is converted to the correct iterable type 
+    """
+    # Input-data should be a List
+    if iter_type is list:
+        data = indata
+
+    # Input-data should be a tuple
+    elif iter_type is tuple:
+        data = tuple(indata)
+
+    # Error
+    else:
+        # Raise error
+        raise TypeError('create_iter_type: ERROR - Unknown iterable data-type-structure')
+
+    # Function return
+    return data
+
 def main():
 
     testClass1 = TestClass1()
@@ -755,43 +815,6 @@ def main():
                 print('---------------------')
                 print('\n')
 
-    
-
-    
-def debug():
-
-    A = [11, 22 ,33]
-    B = (4.0, 5.0, 6.0)
-    C = [A, B]
-
-    D = [88, 99]
-    E = (3.14, 2.71)
-    F  = (D, E)
-
-    G = (C, F)
-    H = (G, G)
-
-    data = G
-
-    print(data)
-    print('\n')
-    print('---------------------')
-
-    map = get_structure_map_DC(data)
-    print(map)
-    print('\n')
-    print('---------------------')
-
-    # indata = tuple(A) + B + tuple(D) + E
-    # print(indata)
-    # print('\n')
-    # print('---------------------')
-
-    # unpacked_data = restructure(map, indata)
-    # print(unpacked_data)
-    # print('\n')
-    # print('---------------------')
-
 def test():
 
     A = [11, 22 ,33]
@@ -837,10 +860,109 @@ def test():
                 print('---------------------')
                 print('\n')
 
+def debug():
+
+    A = [11, 22 ,33]
+    B = (4.0, 5.0, 6.0)
+    C = [A, B]
+
+    D = [88, 99]
+    E = (3.14, 2.71)
+    F  = (D, E)
+
+    G = (C, F)
+    H = ((A, D), (E), (D, A))
+
+    data = H
+
+    print(' DATA ')
+    print('---------------------')
+    print(data)
+    print('\n')
+    print('---------------------')
+    print('\n')
+
+    # -----------------------------
+    print(' Type Map')
+    print('---------------------')
+    map = get_typemap(data)
+    print(map)
+    print('\n')
+    print(' Type Map - Data')
+    print('---------------------')
+    print(map.data)
+    print('\n')
+    print(' Type Map - Type')
+    print('---------------------')
+    print(map.type)
+    print('\n')
+
+    print(' Type Map - Items')
+    print('---------------------')
+   
+    for index in map.items:
+        print(index)
+        print('---------------------')
+        print('\n')
+        
+        if type(index) is TypeMap:
+            print(' Type Map - Sub-Items')
+            print('---------------------')
+            for sub in index.items:
+                print(sub)
+                print('---------------------')
+                print('\n')
+    # -----------------------------
+
+    raw_C = tuple(A) + B
+    raw_F = tuple(D) + E 
+    raw_G = raw_C + raw_F
+    
+    raw_H = tuple(A) + tuple(D) + E + tuple(D) + tuple(A)
+
+
+
+    raw_data = raw_H
+    # raw_data = tuple(B)
+
+    print(' Raw-data ')
+    print('---------------------')
+    print(raw_data)
+    print('\n')
+    print('---------------------')
+
+    print(' Re-Mapping ')
+    print('---------------------')
+    remapped_data = remap_from_typemap_iter(raw_data, map)
+    print(remapped_data)
+    print('\n')
+    print('---------------------')
+
+    print(' Comparison ')
+    print('---------------------')
+    print(' Raw-data ')
+    print(data)
+    print('\n')
+    print(' Remapped-data ')
+    print(remapped_data)
+    print('---------------------')
+
+
+    # print(' DATA ')
+    # print('---------------------')
+    # print(' Structured data ')
+    # print(data)
+    # print('\n')
+    # print(' Raw-data ')
+    # print(raw_data)
+    # print('---------------------')
+
 # Main
 # ------------------------------
 if __name__ == "__main__":
     
-    main()
-    # debug()
-    test()
+    # main()
+    
+    # test()
+
+    debug()
