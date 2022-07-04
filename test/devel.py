@@ -1,5 +1,5 @@
 # Import packages
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import astuple, dataclass, field, fields, is_dataclass
 import dataclasses
 from operator import is_
 import pstats
@@ -78,6 +78,26 @@ def is_iterable(object) -> bool:
     # Failed to get an iterator from object
     except TypeError: 
         # Return non-iterable status
+        return False
+
+# Check if object is a structured-type
+def is_iterable_type(intype : type) -> bool:
+    """
+    Check if input-object is an iterable type
+    :param object: Incomming type
+    :return bool: Returns true or false depending on structured-type object or not
+    """
+    # Tuple
+    if intype is tuple:
+        return True
+    # List
+    elif intype is list:
+        return True
+    # Set
+    elif intype is set:
+        return True
+    # Non-Structured type
+    else:
         return False
 
 # Check if object is a structured-type
@@ -183,6 +203,17 @@ class TestClass2():
     age : int = 29
     heigth : float = 1.85
     handsome : bool = False
+
+@dataclass
+class TestClass4():
+    nautisk_mil : float = 1.852 
+
+@dataclass
+class TestClass5():
+    lista_mi : list = field(default_factory=list)
+
+    def __post_init__(self):
+        self.lista_mi = [1.852, 77.0, 995.0]
 
 @dataclass
 class TestClass3():
@@ -560,12 +591,103 @@ def restructure(map : StructureMap, indata):
 def remap_from_typemap_class(indata, map : TypeMap):
     """
     """
+    # Check if in-data is iterable
+    if not is_iterable(indata):
+        # Raise error
+        raise TypeError('remap_from_typemap_class: ERROR - In-Data is NOT iterable, cannot peform re-mapping')
+
+    # Continue Re-Mapping using input-iterable and Type-Map
+    else:
+        # Assign values to local variables based on in-data
+        _data_list = []
+        _data_dict = {}
+        _type = map.type
+        _index = 0  # Loop-index
+        _data_class = None
+
+        # 
+        if _type is TypeMap:
+            pass
+        
+        # Map-Type is a defined dataclass
+        elif is_dataclass(_type):
+            
+            # Define a local dataclass instance
+            _dataclass = _type
+
+            # Loop through Map-Items
+            # (Map-Items is defined as a list)
+            for _item in map.items:
+                
+                print( ' Item Loop ')
+                print(_item)
+                print(type(_item))
+                print('---------------------')
+                print('\n')
+
+                # Item is List
+                if _item is list:
+                    print('IS LIST')
+                    # Ensure indata-type matches
+                    if type(indata) != _item:
+                        # Raise error
+                        raise TypeError('remap_from_typemap_class: ERROR - In-Data type does NOT match Item-Type')
+                    # Assign data equal to in-data
+                    _data_list = indata
+
+                # Item is Tuple
+                elif _item is tuple:
+                    print('IS TUPLE')
+                    # Ensure indata-type matches
+                    if type(indata) != _item:
+                        # Raise error
+                        raise TypeError('remap_from_typemap_class: ERROR - In-Data type does NOT match Item-Type')
+                    # Assign data equal to in-data
+                    _data_list = list(indata)
+
+                # Item is a Primitive-Type
+                else:
+                    print('IS Primitive')
+                    # Ensure indata-type matches
+                    if type(indata[_index]) != _item:
+                        # Raise error
+                        raise TypeError('remap_from_typemap_class: ERROR - In-Data type does NOT match Item-Type')
+
+                    # Append in-data at index to data-list
+                    _data_list.append(indata[_index])
+
+                    # Increase loop-index
+                    _index += 1
+
+                print('Loop Data')
+                print(_data_list)
+                print('---------------------')
+                print('\n')
+
+            # Update
+            _data_tuple = tuple(_data_list)
+            print(_data_tuple)
+            print(_data_list)
+            # _dataclass = _dataclass(*_data_tuple) 
+            _dataclass = _dataclass(_data_list)           
+        
+        # Update data-class with local defined class
+        data_class = _dataclass
+
+    # Function return
+    return data_class
 
 # Create a Re-Mapped Iterable
 def remap_from_typemap_iter(indata, map : TypeMap):
     """
+    Re-map Iterable-Type from In-data and Type-Map
+    Generate data of the in-data in the same structue as stored in the Type-Map
+    Typically used for creating data with type-map after unpacking data 
+    Note: the input-data needs to be a flat iterable-type (no-nested layers)
+    :param indata : Input data (flat data-structure)
+    :param type_map : TypeMap-class of input-data type-structure
+    :return data : Re-mapped data from TypeMap-class
     """
-
     # Check if in-data is iterable
     if not is_iterable(indata):
         # Raise error
@@ -643,7 +765,7 @@ def remap_from_typemap_iter(indata, map : TypeMap):
                                 _comp_map = comp
                                 _comp_type = comp.type
                                 _comp_list = []
-                                
+
                                 # Raise error
                                 raise StopIteration('remap_from_typemap_iter: ERROR - Maximum nested layers exceeded')
 
@@ -920,8 +1042,6 @@ def debug():
     
     raw_H = tuple(A) + tuple(D) + E + tuple(D) + tuple(A)
 
-
-
     raw_data = raw_H
     # raw_data = tuple(B)
 
@@ -947,16 +1067,87 @@ def debug():
     print(remapped_data)
     print('---------------------')
 
+def debug2():
 
-    # print(' DATA ')
-    # print('---------------------')
-    # print(' Structured data ')
-    # print(data)
-    # print('\n')
-    # print(' Raw-data ')
-    # print(raw_data)
-    # print('---------------------')
+    testClass1 = TestClass1()
+    testClass1.name='Jens'
+    testClass1.age=89
+    testClass1.heigth=1.20
+    testClass2 = TestClass2()
+    testClass4 = TestClass4()
+    testClass5 = TestClass5()
 
+    testClass3 = TestClass3(testClass1, testClass2)
+
+    testClass1_tuple = dataclasses.astuple(testClass1)
+    testClass3_tuple = dataclasses.astuple(testClass3)
+
+    data = testClass5
+
+    print(' DATA ')
+    print('---------------------')
+    print(data)
+    print('---------------------')
+    print('\n')
+
+    # -----------------------------
+    print(' Type Map')
+    print('---------------------')
+    map = get_typemap(data)
+    print(map)
+    print('\n')
+    print(' Type Map - Data')
+    print('---------------------')
+    print(map.data)
+    print('\n')
+    print(' Type Map - Type')
+    print('---------------------')
+    print(map.type)
+    print('\n')
+
+    print(' Type Map - Items')
+    print('---------------------')
+   
+    for index in map.items:
+        print(index)
+        print('---------------------')
+        print('\n')
+        
+        if type(index) is TypeMap:
+            print(' Type Map - Sub-Items')
+            print('---------------------')
+            for sub in index.items:
+                print(sub)
+                print('---------------------')
+                print('\n')
+
+
+    raw_data = astuple(data)
+    raw_data = raw_data[0]
+
+    print(' Raw-data ')
+    print('---------------------')
+    print(raw_data)
+    print('\n')
+    print('---------------------')
+
+    print(' Re-Mapping ')
+    print('---------------------')
+    remapped_data = remap_from_typemap_class(raw_data, map)
+    print('\n')
+    print('Re-Mapped data')
+    print(remapped_data)
+    print('\n')
+    print('---------------------')
+
+    print(' Comparison ')
+    print('---------------------')
+    print(' Raw-data ')
+    print(data)
+    print('\n')
+    print(' Remapped-data ')
+    print(remapped_data)
+    print('---------------------')
 # Main
 # ------------------------------
 if __name__ == "__main__":
@@ -965,4 +1156,6 @@ if __name__ == "__main__":
     
     # test()
 
-    debug()
+    # debug()
+
+    debug2()
