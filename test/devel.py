@@ -7,7 +7,7 @@ import socket
 import struct
 from typing import List
 
-@dataclass(slots = False, frozen = True)
+@dataclass(frozen = True)
 class COMM_CONST:
     """
     Communication Constants
@@ -206,7 +206,8 @@ class TestClass2():
 
 @dataclass
 class TestClass4():
-    nautisk_mil : float = 1.852 
+    nautisk_mil : float = 1.852
+    engelsk_mil : float = 1.609  
 
 @dataclass
 class TestClass5():
@@ -214,6 +215,17 @@ class TestClass5():
 
     def __post_init__(self):
         self.lista_mi = [1.852, 77.0, 995.0]
+
+@dataclass
+class TestClass6():
+    
+    lista_mi : list = field(default_factory=list)
+    lista_di : list = field(default_factory=list)
+    # engelsk_mil : float = 1.609 
+
+    def __post_init__(self):
+        self.lista_mi = [1.852, 77.0, 995.0]
+        self.lista_di = [50, 75, 100]
 
 @dataclass
 class TestClass3():
@@ -271,6 +283,7 @@ def create_typemap_class(indata) -> TypeMap:
             _field_name = field.name
             _field_data = _data.__getattribute__(_field_name)
             _field_type = type(_field_data)
+            _field_length = len(_field_data) if is_iterable_type(_field_type) else 1
             _field_items = []
 
             # Layer No. 2 - Data
@@ -287,6 +300,7 @@ def create_typemap_class(indata) -> TypeMap:
                     _elem_name = elem.name
                     _elem_data = _field_data.__getattribute__(_elem_name)
                     _elem_type = type(_elem_data)
+                    _elem_length = len(_elem_data) if is_iterable_type(_elem_type) else 1
                     # _elem_items = []
 
                     # Layer No. 3 - Data
@@ -299,11 +313,12 @@ def create_typemap_class(indata) -> TypeMap:
                     # Element-data is NOT a dataclass
                     else:
                         # Create a data-tuple on current element 
-                        _elem_tuple = (_elem_name, _elem_type)
+                        # _elem_tuple = (_elem_name, _elem_type, _elem_length)
+                        _elem_tuple = (_elem_type, _elem_length)
 
                         # Append data-tuple of current field to item-list
                         # _field_items.append(_elem_tuple)
-                        _field_items.append(_elem_type)
+                        _field_items.append(_elem_tuple)
 
                     # ------------------------------
                     # End - Layer No. 3 - Data
@@ -319,11 +334,12 @@ def create_typemap_class(indata) -> TypeMap:
             # Field-data is NOT a dataclass
             else:
                 # Create a data-tuple on current field 
-                _item_tuple = (_field_name, _field_type)
+                # _item_tuple = (_field_name, _field_type, _field_length)
+                _item_tuple = (_field_type, _field_length)
 
                 # Append data-tuple of current field to item-list
                 # _items.append(_item_tuple)
-                _items.append(_field_type)
+                _items.append(_item_tuple)
                 
             # ------------------------------
             # End - Layer No. 2 - Data
@@ -591,88 +607,101 @@ def restructure(map : StructureMap, indata):
 def remap_from_typemap_class(indata, map : TypeMap):
     """
     """
-    # Check if in-data is iterable
-    if not is_iterable(indata):
+    # Check if Map-Type is dataclass
+    if not is_dataclass(map.type):
         # Raise error
-        raise TypeError('remap_from_typemap_class: ERROR - In-Data is NOT iterable, cannot peform re-mapping')
+        raise TypeError('remap_from_typemap_class: ERROR - Type-Map is NOT goverend from a dataclass, cannot peform re-mapping')
 
     # Continue Re-Mapping using input-iterable and Type-Map
     else:
-        # Assign values to local variables based on in-data
+        # Define and assign values to local variables based on in-data
         _data_list = []
-        _data_dict = {}
         _type = map.type
         _index = 0  # Loop-index
-        _data_class = None
+        _data_class = object
 
-        # 
-        if _type is TypeMap:
-            pass
-        
-        # Map-Type is a defined dataclass
-        elif is_dataclass(_type):
+        # Assign local dataclass instance equal to Map-Type
+        _data_class = _type
+
+        # Loop through Map-Items
+        # (Map-Items is defined as a list)
+        for _item in map.items:
             
-            # Define a local dataclass instance
-            _dataclass = _type
-
-            # Loop through Map-Items
-            # (Map-Items is defined as a list)
-            for _item in map.items:
-                
-                print( ' Item Loop ')
-                print(_item)
-                print(type(_item))
-                print('---------------------')
-                print('\n')
-
-                # Item is List
-                if _item is list:
-                    print('IS LIST')
-                    # Ensure indata-type matches
-                    if type(indata) != _item:
-                        # Raise error
-                        raise TypeError('remap_from_typemap_class: ERROR - In-Data type does NOT match Item-Type')
-                    # Assign data equal to in-data
-                    _data_list = indata
-
-                # Item is Tuple
-                elif _item is tuple:
-                    print('IS TUPLE')
-                    # Ensure indata-type matches
-                    if type(indata) != _item:
-                        # Raise error
-                        raise TypeError('remap_from_typemap_class: ERROR - In-Data type does NOT match Item-Type')
-                    # Assign data equal to in-data
-                    _data_list = list(indata)
-
-                # Item is a Primitive-Type
-                else:
-                    print('IS Primitive')
-                    # Ensure indata-type matches
-                    if type(indata[_index]) != _item:
-                        # Raise error
-                        raise TypeError('remap_from_typemap_class: ERROR - In-Data type does NOT match Item-Type')
-
-                    # Append in-data at index to data-list
-                    _data_list.append(indata[_index])
-
-                    # Increase loop-index
-                    _index += 1
-
-                print('Loop Data')
-                print(_data_list)
-                print('---------------------')
-                print('\n')
-
-            # Update
-            _data_tuple = tuple(_data_list)
-            print(_data_tuple)
-            print(_data_list)
-            # _dataclass = _dataclass(*_data_tuple) 
-            _dataclass = _dataclass(_data_list)           
+            # Item of Map-Item is a Type-Map
+            # (Nested dataclasses)
+            if type(_item) is TypeMap:
+                print('NESTED DATACLASSES')
+                pass
         
-        # Update data-class with local defined class
-        data_class = _dataclass
+            print( ' Item Loop ')
+            print(_item)
+
+            # Deconstruct Item of Map-Items:
+            _item_type = _item[0]   # First entry equals the Type
+            _item_len = _item[1]    # Second entry equals the length of the Type
+            _item_list = []         # Define a Item-list
+            
+            
+            
+            print(_item_type)
+            print(_item_len)
+            print('---------------------')
+            print('\n')
+
+            # Item is Iterable-Type (list, tuple, etc.)
+            if is_iterable_type(_item_type):
+                
+                # Iterate through the length of the Item
+                for i in range(_item_len):
+                    # Append in-data at index to item-list
+                    _item_list.append(indata[_index])
+
+                    # Update loop-index
+                    _index += 1
+                
+                # Append item-list to data-list
+                _data_list.append(_item_list)
+
+            # Item is a Primitive-Type
+            else:
+                print('IS Primitive')
+                # Ensure indata-type matches
+                if type(indata[_index]) != _item_type:
+                    # Raise error
+                    raise TypeError('remap_from_typemap_class: ERROR - In-Data type does NOT match Item-Type')
+
+                # Append in-data at index to data-list
+                _data_list.append(indata[_index])
+
+                # Increase loop-index
+                _index += 1
+
+            print('Loop Data')
+            print(_item_list)
+            print(_data_list)
+            print('---------------------')
+            print('\n')
+
+        # Convert and update
+        # ------------------------------
+        _data_tuple = tuple(_data_list)         # Convert data-list to a tuple (easier to apply entries for a dataclass)
+        _data_class = _data_class(*_data_tuple) # Unpack tuple to dataclass
+        print('End Data')
+        print('---------------------')
+        print('Data List')
+        print(_data_list)
+        print('\n')
+        print('Data Tuple')
+        print(_data_tuple)
+        print('\n')
+        print('Tuple items')
+        print(len(_data_tuple))
+        # print(_data_tuple[0])
+        print('\n')
+                      
+        
+        # Update data-class with local defined variable
+        data_class = _data_class
 
     # Function return
     return data_class
@@ -1076,13 +1105,14 @@ def debug2():
     testClass2 = TestClass2()
     testClass4 = TestClass4()
     testClass5 = TestClass5()
+    testClass6 = TestClass6()
 
     testClass3 = TestClass3(testClass1, testClass2)
 
     testClass1_tuple = dataclasses.astuple(testClass1)
     testClass3_tuple = dataclasses.astuple(testClass3)
 
-    data = testClass5
+    data = testClass3
 
     print(' DATA ')
     print('---------------------')
@@ -1121,10 +1151,22 @@ def debug2():
                 print('---------------------')
                 print('\n')
 
+    
+    # raw_data_6 = (1.852, 77.0, 995.0, 50, 75, 100)
+    # raw_data = raw_data_6
 
     raw_data = astuple(data)
-    raw_data = raw_data[0]
 
+    if type(data) is TestClass5:
+        raw_data = raw_data[0]
+    elif type(data) is TestClass6:
+        raw_data = (1.852, 77.0, 995.0, 50, 75, 100)
+        # raw_data = (1.852, 77.0, 995.0, 50, 75, 100, 1.609)
+    elif type(data) is TestClass3:
+        raw_data = raw_data[0] + raw_data[1]
+
+
+    
     print(' Raw-data ')
     print('---------------------')
     print(raw_data)
