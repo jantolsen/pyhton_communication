@@ -15,7 +15,7 @@ import socket
 import struct
 
 # Dataclass - Communication Constants
-@dataclass(slots=False)
+@dataclass()
 class _COMM_CONST:
     """
     Communication Constants
@@ -53,7 +53,7 @@ class _COMM_CONST:
     STR             : str = "s"  # String (char[]) (Byte Size: Char*X)
 
 # Dataclass - Communication Configuration
-@dataclass(slots=False)
+@dataclass()
 class _CommConfig:
     """
     Communication Configuration
@@ -71,7 +71,7 @@ class _CommConfig:
 
 
 # Dataclass - Communication Configuration
-@dataclass(slots=False)
+@dataclass()
 class LocalConfig(_CommConfig):
     """
     Communication Configuration Local
@@ -90,7 +90,7 @@ class LocalConfig(_CommConfig):
 
 
 # Dataclass - Communication Configuration
-@dataclass(slots=False)
+@dataclass()
 class RemoteConfig(_CommConfig):
     """
     Communication Configuration Remote
@@ -206,7 +206,7 @@ def get_conversioncode(indata) -> str:
     return conversioncode
 
 # Pack Data to Bytes
-def pack_to_bytes(indata) -> tuple[bytes, str]:
+def pack_to_bytes(indata) -> tuple[bytes, str, object]:
     """
     Pack data to byte
     Get data from input data and pack them to bytes 
