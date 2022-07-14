@@ -10,17 +10,18 @@
 #           [26.06.2022] - Jan T. Olsen
 
 # Import packages
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import astuple, dataclass, field, is_dataclass
 import socket
 import struct
 
 # Dataclass - Communication Constants
-@dataclass()
-class _COMM_CONST:
+@dataclass(frozen = True)
+class COMM_CONST:
     """
     Communication Constants
     Data constants for communication configuration
-    Includes Address-Family type and Protocol type
+    Includes Address-Family type, Protocol type
+    and Byte Code Format
     """
 
     # Address Family
@@ -37,20 +38,46 @@ class _COMM_CONST:
     BigEndian       : str = ">"  # Big-Endian
     Network         : str = "!"  # Big-Endian
 
-    # Format Characters
-    CHAR            : str = "c"  # Character (Byte Size: 1)
-    SCHAR           : str = "b"  # Signed Character (Byte Size: 1)
-    UCHAR           : str = "B"  # Unsigned Character (Byte Size: 1)
-    BOOL            : str = "?"  # Bool (Byte Size: 1)
-    INT16           : str = "h"  # Short (Integer) (Byte Size: 2)
-    UINT16          : str = "H"  # Unsigned Short (Integer) (Byte Size: 2)
-    DINT            : str = "i"  # Double Integer (Byte Size: 4)
-    UDINT           : str = "I"  # Unsigned Double Integer (Byte Size: 4)
-    LINT            : str = "l"  # Long Integer (Byte Size: 4)
-    ULINT           : str = "L"  # Unsigned Long Integer (Byte Size: 4)
-    FLOAT           : str = "f"  # Float (Real) (Byte Size: 4)
-    DOUBLE          : str = "d"  # Double (LReal) (Byte Size: 8)
-    STR             : str = "s"  # String (char[]) (Byte Size: Char*X)
+    # Byte Code Conversion Format Characters
+    BYTE    : str = "c" # Byte (Byte Size)
+    CHAR    : str = "c" # Character (Byte Size: 1)
+    SCHAR   : str = "b" # Signed Character (Byte Size: 1)
+    UCHAR   : str = "B" # Unsigned Character (Byte Size: 1)
+    BOOL    : str = "?" # Bool (Byte Size: 1)
+    INT     : str = "h" # Short (Integer) (Byte Size: 2)
+    UINT    : str = "H" # Unsigned Short (Integer) (Byte Size: 2)
+    DINT    : str = "i" # Double Integer (Byte Size: 4)
+    UDINT   : str = "I" # Unsigned Double Integer (Byte Size: 4)
+    LINT    : str = "l" # Long Integer (Byte Size: 4)
+    ULINT   : str = "L" # Unsigned Long Integer (Byte Size: 4)
+    FLOAT   : str = "f" # Float (Real) (Byte Size: 4)
+    DOUBLE  : str = "d" # Double (LReal) (Byte Size: 8)
+    STRING  : str = "s" # String (char[]) (Byte Size: Char*X)
+
+# Dictionary: Byte Format Code
+# ------------------------------
+BYTE_FORMAT_CODE : dict[type, str] = {
+    bool    : COMM_CONST.BOOL,
+    bytes   : COMM_CONST.BYTE,
+    int     : COMM_CONST.INT,
+    float   : COMM_CONST.FLOAT,
+    str     : COMM_CONST.STRING,
+}
+
+# Dataclass - Communication Type-Map
+@dataclass()
+class TypeMap():
+    """
+    Type-Map Dataclass
+    Dataclass for mapping the Type-Structure of a specified data-type
+    (dataclass, tuple, list, etc.)
+    This includes: object-data, type, item-list and object-size  
+    Type-Map is used in remapping of packed data back to original type-structure
+    """
+    data    : object = None
+    type    : type = object
+    items   : list = field(default_factory=list)
+    size    : int = 0
 
 # Dataclass - Communication Configuration
 @dataclass()
@@ -68,7 +95,6 @@ class _CommConfig:
 
     def __post_init__(self) -> None:
         self.Config = (self.IP, self.Port)
-
 
 # Dataclass - Communication Configuration
 @dataclass()
@@ -108,11 +134,12 @@ class RemoteConfig(_CommConfig):
         self.Config = (self.IP, self.Port)
 
 # Check if object is iterable
-def _iterable(object) -> bool:
+# ------------------------------
+def is_iterable(object) -> bool:
     """
-    Check if input-object is iterable
+    Check if Input-Object is iterable
     (note String is not considered as iterable type)
-    :param object: Incomming object
+    :param object: Input-object
     :return bool: Returns true or false depending on iterable object or not
     """
     # Try to get an iterator from the object
@@ -130,174 +157,182 @@ def _iterable(object) -> bool:
         # Return non-iterable status
         return False
 
-# Find Byte Conversion Code based on data-type
-def find_conversioncode(data) -> str:
+# Get Byte Format-Code of the incomming data-type
+# ------------------------------
+def get_byte_format(indata) -> str:
     """
-    Find the corresponding Conversion-Code of input data
-    Using the _COMM_CONT dataclass. 
-    Note: input data needs to be a pure data-type
-    :param datatype: Incomming Datatype (bool, int, float, str) 
-    :return conversionCode: Conversion-Code of datatype (str)
+    Find the corresponding Byte Format-Code of input data-type
+    Using the BYTE_FORMAT_CODE dictionary (based on the COMM_CONST dataclass. 
+    Note: Input data needs to be a pure data-type
+    :param indata: Incomming data (bool, int, float, str) 
+    :return format_code: Byte Format-Code of in-data datatype (str)
     """
-    # Bool
-    if type(data) is bool:
-        conversioncode = _COMM_CONST.BOOL
 
-    # Int
-    elif type(data) is int:
-        conversioncode = _COMM_CONST.INT16
+    # Check for unsupported data-type
+    if (type(indata) not in BYTE_FORMAT_CODE):
+        raise KeyError('get_format_code: ERROR - Unsupported type {%s}' %type(indata))
 
-    # Float
-    elif type(data) is float:
-        conversioncode = _COMM_CONST.FLOAT
-
-    # String
-    elif type(data) is str:
-        # String is handled as an array of chars
-        string_len = len(data)                    # Find string-length
-        chars = format(string_len)                  # Format string-length number as string
-        conversioncode = chars + _COMM_CONST.STR    # Add string-length number to conversion-code constant
-
-    # Iterable
-    elif _iterable(data):
-        # Report error
-        raise TypeError('ERROR: findConversionCode: Iterable type is not supported {%s}' %type(data))
-
-    # Unsupported type
+    # Get Byte Format-Code of in-data
     else:
-        # Report error
-        raise TypeError('ERROR: findConversionCode: Unsupported type {%s}' %type(data))
+        # Use the Byte-Format-Code dictionary to find the correspoding format character
+        format_code = BYTE_FORMAT_CODE[type(indata)]
+        
+        # Special Case: String
+        if type(indata) is str:
+            # String is handled as an array of chars
+            # String-length (number of chars) needs to added to the format character
+            string_len = len(indata)                # Find string-length
+            no_chars = format(string_len)           # Format string-length number as string
+            format_code = no_chars + format_code    # Add string-length number to Byte-Format-Code
 
-    # Return Conversion-Code
-    return conversioncode
+    # Return Byte-Format
+    return format_code
 
 # Get Byte Conversion Code of input-data
-def get_conversioncode(indata) -> str:
+# ------------------------------
+def get_byte_conversion(indata) -> str:
     """
-    Find the correct Conversion-Code of input-data
-    Using the _COMM_CONT dataclass
+    Find the correct complete Conversion-Code of input-data
+    Uses the "get_byte_format"-function to get the correct Format-Code.
+    Dependent on the incomming data; If a pure data-type is entered the 
+    Conversion-Code will directly correspond to the related Format-Code. 
+    If incomming data is iterable, the Conversion-Code is generated based 
+    on multiple Format-Codes. 
     :param indata: Incomming Data 
-    :return conversionCode: Conversion-Code of data
+    :return conversion_code: Byte Conversion-Code of in-data (str)
     """
-    # Define Conversion-Code variable
-    conversioncode = ''
 
-    # Check if in-data is iterable
-    if _iterable(indata):
+    # Define Byte Conversion-Code variable
+    conversion_code = ''
 
+    # In-data is Iterable-Type 
+    # ------------------------------
+    # (list, tuple, etc.)
+    if is_iterable(indata):
         # Iterate through incomming data
         for item in indata:
-
-            # Check for additional nested coupling
-            # (item of indata is iterable)
-            if _iterable(item):
-                # Raise error
-                raise TypeError('ERROR: get_conversioncode: To many nested layers of indata')
+            # Get Item's Byte-Conversion-Code
+            _item_conversion_code = get_byte_conversion(item)
 
             # Add Conversion-Code for Item
-            conversioncode += find_conversioncode(item)
-
-    # In-data is not iterable
+            conversion_code += _item_conversion_code
+            
+    # In-data is Primitive Type
+    # ------------------------------ 
+    # (int, float, string, etc.)
     else:
-        # Find Conversion-Code for indata
-        conversioncode += find_conversioncode(indata)
+        # Generate Byte-Conversion-Code for indata
+        conversion_code = get_byte_format(indata)
 
     # Return Conversion-Code
-    return conversioncode
+    return conversion_code
 
 # Pack Data to Bytes
+# ------------------------------
 def pack_to_bytes(indata) -> tuple[bytes, str, object]:
     """
     Pack data to byte
-    Get data from input data and pack them to bytes 
-    with correct conversion-code for the related data-types
+    Pack incomming data to bytes with correct conversion-code 
+    for the related data-types
     Packed-data can be used for data-transfer over TCP/UDP
     :param indata: Data to be packed to bytes
     :return packed_data: Packed data (bytes)
-    :return conversionCode: Conversion-Code of packed data (str)
+    :return conversion_code: Conversion-Code of packed data (str)
+    :return data: Flat-structured copy of indata
     """
-    # Initialize Function outputs
-    conversioncode = '' 
+
+    # Define local variables
+    conversion_code = '' 
     packed_data = b''
     data = 0
 
-    # Check if in-data is iterable
-    # (Ex.: Tuple, List, Set)
-    if _iterable(indata):
+    # In-data is Iterable-Type 
+    # ------------------------------
+    # (list, tuple, etc.)
+    if is_iterable(indata):
         # Data is redefined as list
         data = []
 
         # Iterate through incomming data
         for item in indata:
-            # Check if item of in-data is iterable
-            # (in-data contains nested iterable types)
-            # Ex.: tuple(s) within a tuple
-            if _iterable(item):
-                # Iterate through item
-                for element in item:
-                    # Check for additional nested coupling
-                    # (element of item of indata is iterable)
-                    if _iterable(element):
-                        # Raise error
-                        raise TypeError('ERROR: pack_to_bytes: To many nested layers of In-data')
 
-                    # Get and Update Conversion Code
-                    conversioncode += get_conversioncode(element)
+            # Item is Iterable-Type 
+            # ------------------------------
+            # (list, tuple, etc.)
+            if is_iterable(item):
 
-                    # String: Special case
-                    if type(element) is str:
-                        # String needs to be encoded to byte-value
-                        element = element.encode('UTF-8')
+                # Pack Item to Bytes
+                item_packed_data, item_conversion_code, item_data = pack_to_bytes(item)
+                
+                # Get and update Conversion Code
+                conversion_code += item_conversion_code
 
-                    # Append acquired information to data-array
-                    data.append(element)
+                # Item-Data is Iterable-Type 
+                # ------------------------------
+                # (list, tuple, etc.)
+                if is_iterable(item_data):
 
-            # Item is not iterable
+                    # Iterate through elements of item_data
+                    for elem in item_data:
+                        # Append element to data-list 
+                        data.append(elem)
+
+                # Item-Data is Primitive Type
+                # ------------------------------ 
+                else:
+                    # Append item-data to data-list 
+                    data.append(item_data)
+
+            # In-data is Primitive Type
+            # ------------------------------ 
+            # (int, float, string, etc.)
             else:
-                # Get and Update Conversion Code
-                conversioncode += get_conversioncode(item)
+                # Get and update Conversion Code
+                conversion_code += get_byte_conversion(item)
 
-                # String: Special case
+                # Special case: String
                 if type(item) is str:
                     # String needs to be encoded to byte-value
                     item = item.encode('UTF-8')
 
-                # Append acquired information to data-array
+                # Append item-data to data-list 
                 data.append(item)
-        
+
         # Pack data to bytes
-        packed_data = struct.pack(_COMM_CONST.Network + conversioncode, *data)
-    
-    # In-data is not iterable
+        packed_data = struct.pack(COMM_CONST.Network + conversion_code, *data)
+
+    # In-data is Primitive Type
+    # ------------------------------ 
+    # (int, float, string, etc.)
     else:
-        # Get and Update Conversion Code
-        conversioncode = get_conversioncode(indata)
+        # Get In-data Conversion Code
+        conversion_code = get_byte_conversion(indata)
 
         # Special case: String
         if type(indata) is str:
             # String needs to be encoded to byte-value
             data = indata.encode('UTF-8')
-
         # In-data is not string
         else:
             # Assign data equal to indata
             data = indata
 
         # Pack data to bytes
-        packed_data = struct.pack(_COMM_CONST.Network + conversioncode, data)
+        packed_data = struct.pack(COMM_CONST.Network + conversion_code, data)
 
     # Function return 
-    return packed_data, conversioncode, data
+    return packed_data, conversion_code, data
 
 # Unpack Data from Bytes
-def unpack_from_bytes(packed_data : bytes, conversioncode : str):
+# ------------------------------
+def unpack_from_bytes(packed_data : bytes, conversion_code : str):
     """
     Unpack data from bytes
     The packed data is converted back to its original type(s)
     using the given conversion-code
     Unpacked-data can be used for data-received over TCP/UDP
-    :param dataPacked: Packed data (bytes)
-    :param conversionCode: Conversion-Code of packed data (str)
+    :param packed_data: Packed data (bytes)
+    :param conversion_code: Conversion-Code of packed data (str)
     :return data: Unpacked Data
     """
     # Define local variables
@@ -306,16 +341,18 @@ def unpack_from_bytes(packed_data : bytes, conversioncode : str):
     _index = 0
 
     # Unpack data from bytes to a local variable
-    _unpacked_data = struct.unpack(_COMM_CONST.Network + conversioncode, packed_data)
+    _unpacked_data = struct.unpack(COMM_CONST.Network + conversion_code, packed_data)
 
-    # Determine if Packed-Data contains more than one-variable
-    if len(conversioncode) > 1:
+    # Packed Data contains multiple entries
+    # ------------------------------ 
+    # (multiple variables to unpack)
+    if len(conversion_code) > 1:
 
         # Define Unpacked-Data as list
         _unpacked_data_list = []
-        
+
         # Iterate through Conversion-Code
-        for code in conversioncode:
+        for code in conversion_code:
     
             # Special case: Digit
             if code.isdigit():
@@ -326,11 +363,11 @@ def unpack_from_bytes(packed_data : bytes, conversioncode : str):
                 continue
 
             # Special case: String
-            elif code == _COMM_CONST.STR:
+            elif code == COMM_CONST.STRING:
                 # String needs to be decoded from byte-value
                 _value = _unpacked_data[_index].decode('UTF-8')
 
-            # Assign the local value-variable equal to the indexed element of unpackedData
+            # Assign the local value-variable equal to the indexed element of unpacked-data
             else:
                 _value = _unpacked_data[_index]
 
@@ -339,33 +376,239 @@ def unpack_from_bytes(packed_data : bytes, conversioncode : str):
 
             # Append index value to Unpacked-Data list
             _unpacked_data_list.append(_value)
-
-        # Check length of list
+        
+        # Unpacked Data contains multiple entries
+        # ------------------------------ 
         if len(_unpacked_data_list) > 1:
 
             # Unpacked-Data-List contains more than one entry
             # Convert Unpacked-Data-List to a tuple
             unpacked_data = tuple(_unpacked_data_list)
 
-        # List length is only one entry
+        # Unpacked Data List contains single entry
+        # ------------------------------ 
         else:
             # Assign the Unpacked-Data equal to the only entry of the list
             unpacked_data = _unpacked_data_list[-1]
-
-    # Only one variable to unpack
+    
+    # Packed Data contains single entry
+    # ------------------------------ 
+    # (Only one variable to unpack)
     else:
         # Assign the Unpacked-data equals to the previously found local variable
-        unpacked_data = _unpacked_data
+        unpacked_data = _unpacked_data[-1]
 
     # Function return
     return unpacked_data
 
-def convert_to_type(data, type_info):
+# Get Type-Map
+# ------------------------------
+def get_typemap(indata) -> TypeMap:
+    """
+    Create Type-Map of a Primitive (int, float, string, etc.) 
+    or Iterable-Type (list, tuple, etc.)
+    Typically used for creating a type-map before packing and unpacking data 
+    :param indata : Input data
+    :return type_map : TypeMap-class of input-data type-structure
+    """
 
-    if _iterable(type_info):
+    # Check if in-data is a dataclass
+    if is_dataclass(indata):
+        # Raise error
+        raise TypeError('CommToolbox.get_typemap: ERROR - In-Data is Dataclass, cannot create a type-map')
 
-        for item in type_info:
-            raise NotImplementedError
+    # Continue creating a Type-Map of input iterable
+    else:
 
+        # Define and assign values to local variables based self-dataclass object
+        _data = indata
+        _type = type(_data)
+        _items = []
+        _size = 0 #len(_data) if is_iterable(_data) else 1
 
+        # In-data is Iterable-Type 
+        # ------------------------------
+        # (list, tuple, etc.) 
+        if is_iterable(indata):
+            
+            # Iterate through the fields of the in-data
+            for field in _data:
+                
+                # Get the data of current field
+                _field_data = field
+                _field_type = type(_field_data)
+                _field_length = len(_field_data) if is_iterable(_field_data) else 1
 
+                # Field-data is Iterable-Type 
+                # ------------------------------
+                # (list, tuple, etc.) 
+                if is_iterable(field):
+
+                    # Get Type-Map of current field to _data
+                    _field_map = get_typemap(field)
+
+                    # Create a data-tuple on current field 
+                    _item_tuple = (_field_map, _field_length)
+
+                     # Append item-tuple of current field to item-list
+                    _items.append(_item_tuple)
+
+                    # Update Size
+                    _size += _field_map.size
+
+                # Field-data is Primitive Type
+                # ------------------------------ 
+                # (int, float, string, etc.)
+                else:
+                    # Create a data-tuple on current field 
+                    _item_tuple = (_field_type, _field_length)
+
+                    # Append item-tuple of current field to item-list
+                    _items.append(_item_tuple)
+
+                    # Update Size
+                    _size += _field_length
+                
+        # Creat a Type-Map object of obtained data
+        type_map = TypeMap(_data, _type, _items, _size)
+
+        # Function return
+        return type_map
+
+# Remap
+# ------------------------------
+def remap(indata, type_map : TypeMap):
+    """
+    Re-map In-data to its original type-strucute
+    Generate data from flat-structured indata back to its original format
+    using the type-structure from the related Type-Map 
+    Typically used for creating data with type-map after unpacking data 
+    :param indata : Input data (flat data-structure) 
+    :param type_map : TypeMap-class of input-data type-structure
+    :return data : Re-mapped data
+    """
+
+    # Define and assign values to local variables based on Type-Map
+    _data_list = []
+    _remapped_data = type_map.type 
+    _size = type_map.size
+    _index = 0  # Loop-index
+    
+    # Iterate through Map-Items
+    # (Map-Items is defined as a list)
+    for item in type_map.items:
+
+        _item_type = item[0]    # First entry equals the Type
+        _item_len = item[1]     # Second entry equals the length of the Type
+        _item_list = []         # Define a Item-list
+
+         # Item is a Type-Map
+        # ------------------------------
+        # (Nested dataclasses)
+        if type(_item_type) is TypeMap:
+
+            # Assign Sub-Values from Item Type-Map
+            _sub_typemap = _item_type
+            _sub_data = _sub_typemap.data
+            _sub_type = _sub_typemap.type
+            _sub_items = _sub_typemap.items
+            _sub_items_size = _sub_typemap.size
+            _sub_indata = []
+            
+            # Calculate Sub-Indata
+            # ------------------------------
+            # Original Indata is related to the base TypeMap
+            # a Sub-Indata needs to be calculated to match the Sub-TypeMap
+            for i in range(_index, _index + _sub_items_size):
+                _sub_indata.append(indata[i])
+
+            # Call remap for Sub-Data
+            _sub_data = remap(_sub_indata, _sub_typemap)
+
+            # Update loop-index
+            _index += _sub_items_size
+
+            # Append Sub-Data to data-list
+            _data_list.append(_sub_data)
+
+        # Item is Iterable-Type 
+        # ------------------------------ 
+        # (list, tuple, etc.)
+        elif (_item_type is tuple) or (_item_type is list):
+            # Iterate through the length of the Item
+            for i in range(_item_len):
+                # Append in-data at index to item-list
+                _item_list.append(indata[_index])
+
+                # Update loop-index
+                _index += 1
+            
+            # Append item-list to data-list
+            _data_list.append(_item_list)
+
+        # Item is a Primitive-Type 
+        # ------------------------------ 
+        # (int, float, string, etc.)
+        else:
+            # Ensure indata-type matches
+            if type(indata[_index]) != _item_type:
+                # Raise error
+                raise TypeError('remap: ERROR - In-Data type does NOT match Item-Type')
+
+            # Append in-data at index to data-list
+            _data_list.append(indata[_index])
+
+            # Increase loop-index
+            _index += 1
+    
+    # Convert and Update Remapped Data
+    # ------------------------------
+    # Primitive-Type 
+    if not is_iterable(type_map.data):
+        # Assign Remapped-Data as Primitive
+        _remapped_data = type_map.data
+
+    # Tuple-Type 
+    elif type_map.type is tuple:
+        # Convert Data-List to tuple
+        _data_tuple = tuple(_data_list)
+
+        # Assign Remapped-Data as Tuple
+        _remapped_data = _data_tuple
+
+    # List-Type
+    elif type_map.type is list:
+
+         # Assign Remapped-Data as List
+        _remapped_data = _data_list
+    
+    # Unsupported type
+    else:
+        # Raise error
+        raise TypeError('remap: ERROR - Type-Map type is unsupported')
+
+    # Function return
+    return _remapped_data
+
+# Remap from Bytes
+# ------------------------------
+def remap_from_bytes(packed_data : bytes, type_map : TypeMap, conversion_code : str):
+    """
+    Remap from Bytes
+    Packed-data (bytes) is used together with the conversion-code 
+    and the related Type-Map to generate data with its original type-structure
+    :param packed_data : Packed Data (bytes)
+    :param type_map : Type-Map of data object to be re-mapped 
+    :param conversion_code : Byte-Conversion-Code (str)
+    :return data : Re-mapped Object 
+    """
+
+    # Unpack Dataclass from bytes
+    # (this will create "flat-structured"-data of the data)
+    unpacked_data = unpack_from_bytes(packed_data, conversion_code)
+
+    # Remap Data using the Unpacked data (flat-structured)
+    remapped_data = remap(unpacked_data, type_map)
+
+    # Function return
+    return remapped_data

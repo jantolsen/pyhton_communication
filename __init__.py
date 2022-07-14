@@ -1,2 +1,2 @@
 import comm_toolbox
-import comm_data
+from lib.generic_commdata import GenericCommClass
