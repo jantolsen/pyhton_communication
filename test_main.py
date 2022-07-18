@@ -10,6 +10,7 @@
 
 # Import packages
 from dataclasses import dataclass, field, fields, is_dataclass
+import pickle
 
 # Import Toolbox
 import comm_toolbox as CommToolbox
@@ -203,10 +204,66 @@ def test2():
     # ------------------------------
 
 
+@dataclass
+class TestClass10():
+    nautisk_mil : float = 1.852
+    engelsk_mil : int = 1609 
+
+@dataclass
+class TestClass11():
+    name : str = 'olsen'
+    age : int = 12
+    heigth : float = 1.70
+    lista_mi : list = field(default_factory=list) 
+
+@dataclass
+class TestClass12():
+    
+    verdi : float
+    class3 : TestClass10
+    class1 : TestClass11
+
+def test3():
+
+    testClass10 = TestClass10()
+    testClass11 = TestClass11(lista_mi=[1.852, 77.0, 995.0])
+    testClass12 = TestClass12(4638.8, testClass10, testClass11)
+
+
+    data = testClass12
+    # ------------------------------
+    print('\n')
+    print(' DATA ')
+    print('---------------------')
+    print(data)
+    print('---------------------')
+    print('\n')
+
+    print('\n')
+    print(' Packed ')
+    print('---------------------')
+    packed_data = pickle.dumps(data)
+    print(len(packed_data)) 
+    print(type(packed_data)) 
+    print('\n')
+    print(packed_data)
+    print('---------------------')
+    print('\n')
+
+    print('\n')
+    print(' UnPacked ')
+    print('---------------------')
+    unpacked_data = pickle.loads(packed_data)
+    print(unpacked_data)
+    print('---------------------')
+    print('\n')
+
 # Main
 # ------------------------------
 if __name__ == "__main__":
 
-    test()
+    # test()
 
     # test2()
+
+    test3()

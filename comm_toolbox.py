@@ -13,6 +13,7 @@
 from dataclasses import astuple, dataclass, field, is_dataclass
 import socket
 import struct
+import sys
 
 # Dataclass - Communication Constants
 @dataclass(frozen = True)
@@ -32,6 +33,9 @@ class COMM_CONST:
     UDP     : int = socket.SOCK_DGRAM
     TCP     : int = socket.SOCK_STREAM
 
+    # Connection Timeout
+    TIMEOUT : float = 1.0 
+    
     # Byte Order
     Native          : str = "="  # Native to system OS (sys.byteorder)
     LittleEndian    : str = "<"  # Little-Endian
@@ -54,6 +58,12 @@ class COMM_CONST:
     DOUBLE  : str = "d" # Double (LReal) (Byte Size: 8)
     STRING  : str = "s" # String (char[]) (Byte Size: Char*X)
 
+    # Server and Client IDs
+    SERVER          : int = 1
+    GUI_CLIENT      : int = 2
+    MATLAB_CLIENT   : int = 3
+
+
 # Dictionary: Byte Format Code
 # ------------------------------
 BYTE_FORMAT_CODE : dict[type, str] = {
@@ -63,6 +73,27 @@ BYTE_FORMAT_CODE : dict[type, str] = {
     float   : COMM_CONST.FLOAT,
     str     : COMM_CONST.STRING,
 }
+
+# Dataclass - Communication Header
+@dataclass()
+class COMM_HEADER():
+    """
+    Communication Header
+    Dataclass is acting as Communication Header for incomming and outgoing data. 
+    This contains information such as:
+     - Type ID (int) : (Server, GUI, Matlab, etc)
+     - Content length (int) : Length of the message's data-content
+     - Header length (int) : Length of the message header (default: 32)
+     - Encoding (str) : Encoding used by the content (default: utf-8)
+     - Byteorder (str) : Byte order of the machine (little-, big-endian) (default: sys.byteorder)    
+    """
+
+    type_id : int
+    content_length : int
+    header_length  : int = field(repr = False, default = 32)
+    encoding    : str = field(repr = False, default = 'utf-8')
+    byteorder   : str = field(repr = False, default = sys.byteorder)
+
 
 # Dataclass - Communication Type-Map
 @dataclass()
@@ -78,6 +109,7 @@ class TypeMap():
     type    : type = object
     items   : list = field(default_factory=list)
     size    : int = 0
+
 
 # Dataclass - Communication Configuration
 @dataclass()
@@ -95,6 +127,7 @@ class _CommConfig:
 
     def __post_init__(self) -> None:
         self.Config = (self.IP, self.Port)
+
 
 # Dataclass - Communication Configuration
 @dataclass()
@@ -133,6 +166,7 @@ class RemoteConfig(_CommConfig):
     def __post_init__(self) -> None:
         self.Config = (self.IP, self.Port)
 
+
 # Check if object is iterable
 # ------------------------------
 def is_iterable(object) -> bool:
@@ -156,6 +190,7 @@ def is_iterable(object) -> bool:
     except TypeError: 
         # Return non-iterable status
         return False
+
 
 # Get Byte Format-Code of the incomming data-type
 # ------------------------------
@@ -187,6 +222,7 @@ def get_byte_format(indata) -> str:
 
     # Return Byte-Format
     return format_code
+
 
 # Get Byte Conversion Code of input-data
 # ------------------------------
@@ -226,6 +262,7 @@ def get_byte_conversion(indata) -> str:
 
     # Return Conversion-Code
     return conversion_code
+
 
 # Pack Data to Bytes
 # ------------------------------
@@ -323,6 +360,7 @@ def pack_to_bytes(indata) -> tuple[bytes, str, object]:
     # Function return 
     return packed_data, conversion_code, data
 
+
 # Unpack Data from Bytes
 # ------------------------------
 def unpack_from_bytes(packed_data : bytes, conversion_code : str):
@@ -401,6 +439,7 @@ def unpack_from_bytes(packed_data : bytes, conversion_code : str):
     # Function return
     return unpacked_data
 
+
 # Get Type-Map
 # ------------------------------
 def get_typemap(indata) -> TypeMap:
@@ -474,6 +513,7 @@ def get_typemap(indata) -> TypeMap:
 
         # Function return
         return type_map
+
 
 # Remap
 # ------------------------------
@@ -589,6 +629,7 @@ def remap(indata, type_map : TypeMap):
 
     # Function return
     return _remapped_data
+
 
 # Remap from Bytes
 # ------------------------------
